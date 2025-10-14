@@ -5,9 +5,11 @@ package timestamp
 import (
 	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -16,7 +18,14 @@ import (
 	"time"
 
 	"github.com/digitorus/pkcs7"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
+	"github.com/hyperledger/fabric-gateway/pkg/hash"
 )
+
+type Document struct {
+	SerialNumber string `json:"serial_number"`
+	Hash         string `json:"hash"`
+}
 
 // FailureInfo contains the failure details of an Time-Stamp request. See
 // https://tools.ietf.org/html/rfc3161#section-2.4.2
@@ -152,6 +161,7 @@ type Request struct {
 
 // ParseRequest parses an timestamp request in DER form.
 func ParseRequest(bytes []byte) (*Request, error) {
+
 	var err error
 	var rest []byte
 	var req request
@@ -435,6 +445,32 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 	if err != nil {
 		return nil, err
 	}
+
+	clientConnection := newGrpcConnection()
+	defer clientConnection.Close()
+
+	gw, err := client.Connect(
+		newIdentity(),
+		client.WithSign(newSign()),
+		client.WithHash(hash.SHA256),
+		client.WithClientConnection(clientConnection),
+	)
+
+	network := gw.GetNetwork(channelName)
+	contract := network.GetContract(chaincodeName)
+
+	fmt.Println("TSA Serial Number:", tsaSerialNumber.String())
+
+	// generate the hex string of the timestamp hash
+	hash := sha256.Sum256(timestampRes.TimeStampToken.Bytes)
+	hashString := hex.EncodeToString(hash[:])
+	_, err = contract.SubmitTransaction("AddDocument", tsaSerialNumber.String(), hashString)
+
+	if err != nil {
+		fmt.Sprintf("error submiting transaction on blockchain %v.", tsaSerialNumber)
+		return nil, err
+	}
+
 	return tspResponseBytes, nil
 }
 
