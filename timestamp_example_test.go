@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 )
 
 // ExampleCreateRequest_ParseResponse demonstrates the creation of a time-stamp request, sending
