@@ -19,7 +19,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 )
 
 func TestVerifyRequest(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	"crypto"
 	"fmt"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/pkg/errors"
 )
 

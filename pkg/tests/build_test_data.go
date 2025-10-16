@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/sigstore/timestamp-authority/pkg/api"
 )
 

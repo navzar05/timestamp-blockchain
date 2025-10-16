@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/timestamp-authority/cmd/timestamp-cli/app/format"
 	"github.com/sigstore/timestamp-authority/pkg/client"

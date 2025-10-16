@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digitorus/timestamp"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/pkg/errors"
 	ts "github.com/sigstore/timestamp-authority/pkg/generated/restapi/operations/timestamp"
 	"github.com/sigstore/timestamp-authority/pkg/verification"

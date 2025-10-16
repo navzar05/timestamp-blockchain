@@ -25,7 +25,7 @@ import (
 	"math/big"
 
 	"github.com/digitorus/pkcs7"
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/pkg/errors"
 )
 

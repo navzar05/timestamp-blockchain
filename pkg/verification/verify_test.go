@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitorus/timestamp"
+	"github.com/navzar05/timestamp-blockchain"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/timestamp-authority/pkg/client/mock"
