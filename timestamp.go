@@ -427,6 +427,10 @@ func CreateRequest(r io.Reader, opts *RequestOptions) ([]byte, error) {
 	return req.Marshal()
 }
 
+func LoadEnvFile(path string) {
+	godotenv.Load(path)
+}
+
 // CreateResponseWithOpts returns a DER-encoded timestamp response with the specified contents.
 // The fields in the response are populated as follows:
 //
@@ -435,7 +439,6 @@ func CreateRequest(r io.Reader, opts *RequestOptions) ([]byte, error) {
 func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv crypto.Signer, opts crypto.SignerOpts) ([]byte, error) {
 
 	// load the .env file to pick the anchoring type
-	godotenv.Load()
 	anchoringType = AnchoringType(os.Getenv("ANCHOR_TYPE"))
 
 	messageImprint := getMessageImprint(t.HashAlgorithm, t.HashedMessage)
