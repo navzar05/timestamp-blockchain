@@ -490,8 +490,6 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chaincodeName)
 
-	fmt.Println("TSA Serial Number:", tsaSerialNumber.String())
-
 	// generate the hex string of the timestamp hash
 	hash := sha256.Sum256(timestampRes.TimeStampToken.Bytes)
 	hashString := hex.EncodeToString(hash[:])
@@ -577,7 +575,10 @@ func generateTSASerialNumber() (*big.Int, error) {
 		copy(randomBytes, "HYF:")
 	default:
 		copy(randomBytes, "BSC:")
+		break
 	}
+
+	fmt.Println("TSA Serial Number:", randomBytes)
 
 	serialNumber := big.NewInt(0)
 	serialNumber = serialNumber.SetBytes(randomBytes)
