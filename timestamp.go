@@ -438,6 +438,8 @@ func LoadEnvFile(path string) {
 // certificate itself is provided alongside the timestamp response signature.
 func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv crypto.Signer, opts crypto.SignerOpts) ([]byte, error) {
 
+	godotenv.Load()
+
 	// load the .env file to pick the anchoring type
 	anchoringType = AnchoringType(os.Getenv("ANCHOR_TYPE"))
 
