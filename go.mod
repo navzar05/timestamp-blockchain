@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.7 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect

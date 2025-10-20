@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,18 @@ import (
 	"github.com/digitorus/pkcs7"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/hash"
+	"github.com/joho/godotenv"
 )
+
+type AnchoringType string
+
+const (
+	Basic             AnchoringType = "BSC"
+	Ethereum          AnchoringType = "ETH"
+	HyperledgerFabric AnchoringType = "HYF"
+)
+
+var anchoringType AnchoringType
 
 type Document struct {
 	SerialNumber string `json:"serial_number"`
@@ -421,6 +433,11 @@ func CreateRequest(r io.Reader, opts *RequestOptions) ([]byte, error) {
 // The responder cert is used to populate the responder's name field, and the
 // certificate itself is provided alongside the timestamp response signature.
 func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv crypto.Signer, opts crypto.SignerOpts) ([]byte, error) {
+
+	// load the .env file to pick the anchoring type
+	godotenv.Load()
+	anchoringType = AnchoringType(os.Getenv("ANCHOR_TYPE"))
+
 	messageImprint := getMessageImprint(t.HashAlgorithm, t.HashedMessage)
 
 	tsaSerialNumber, err := generateTSASerialNumber()
@@ -534,8 +551,23 @@ func generateTSASerialNumber() (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	switch anchoringType {
+	case Basic:
+		copy(randomBytes, "BSC:")
+		break
+	case Ethereum:
+		// to be implemented
+		break
+	case HyperledgerFabric:
+		copy(randomBytes, "HYF:")
+	default:
+		copy(randomBytes, "BSC:")
+	}
+
 	serialNumber := big.NewInt(0)
 	serialNumber = serialNumber.SetBytes(randomBytes)
+
 	return serialNumber, nil
 }
 
