@@ -441,6 +441,8 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 	// load the .env file to pick the anchoring type
 	anchoringType = AnchoringType(os.Getenv("ANCHOR_TYPE"))
 
+	fmt.Println("Anchoring Type: ", anchoringType)
+
 	messageImprint := getMessageImprint(t.HashAlgorithm, t.HashedMessage)
 
 	tsaSerialNumber, err := generateTSASerialNumber()
