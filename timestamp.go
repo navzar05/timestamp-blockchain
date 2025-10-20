@@ -14,6 +14,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -428,7 +429,14 @@ func CreateRequest(r io.Reader, opts *RequestOptions) ([]byte, error) {
 }
 
 func LoadEnvFile(path string) {
-	godotenv.Load(path)
+	exePath, err := os.Executable()
+	if err != nil {
+		_ = godotenv.Load(path)
+		return
+	}
+	exeDir := filepath.Dir(exePath)
+	fullPath := filepath.Join(exeDir, path)
+	_ = godotenv.Load(fullPath)
 }
 
 // CreateResponseWithOpts returns a DER-encoded timestamp response with the specified contents.
@@ -438,8 +446,7 @@ func LoadEnvFile(path string) {
 // certificate itself is provided alongside the timestamp response signature.
 func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv crypto.Signer, opts crypto.SignerOpts) ([]byte, error) {
 
-	godotenv.Load()
-
+	LoadEnvFile(".env")
 	// load the .env file to pick the anchoring type
 	anchoringType = AnchoringType(os.Getenv("ANCHOR_TYPE"))
 
