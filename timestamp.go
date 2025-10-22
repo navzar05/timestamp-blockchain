@@ -477,6 +477,26 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 		return nil, err
 	}
 
+	switch anchoringType {
+	case Basic:
+		break
+	case HyperledgerFabric:
+		_, err = t.AnchorOnHyperledger(tsaSerialNumber, timestampRes)
+		break
+	case Ethereum:
+		// to be implemented
+		break
+
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tspResponseBytes, nil
+}
+
+func (t *Timestamp) AnchorOnHyperledger(tsaSerialNumber *big.Int, timestampRes response) (string, error) {
 	clientConnection := newGrpcConnection()
 	defer clientConnection.Close()
 
@@ -486,6 +506,10 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 		client.WithHash(hash.SHA256),
 		client.WithClientConnection(clientConnection),
 	)
+
+	if err != nil {
+		return "", err
+	}
 
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chaincodeName)
@@ -497,10 +521,10 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 
 	if err != nil {
 		fmt.Sprintf("error submiting transaction on blockchain %v.", tsaSerialNumber)
-		return nil, err
+		return "", err
 	}
 
-	return tspResponseBytes, nil
+	return hashString, nil
 }
 
 // CreateResponse returns a DER-encoded timestamp response with the specified contents.
@@ -569,7 +593,7 @@ func generateTSASerialNumber() (*big.Int, error) {
 		copy(randomBytes, "BSC:")
 		break
 	case Ethereum:
-		// to be implemented
+		copy(randomBytes, "ETH:")
 		break
 	case HyperledgerFabric:
 		copy(randomBytes, "HYF:")
