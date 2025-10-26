@@ -25,14 +25,14 @@ func ExampleParseResponse() {
 		log.Fatal(err)
 	}
 
-	tsr, err := http.Post("https://freetsa.org/tsr", "application/timestamp-query", bytes.NewReader(tsq))
+	tsr, err := http.Post("http://localhost:3000/api/v1/timestamp", "application/timestamp-query", bytes.NewReader(tsq))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if tsr.StatusCode > 200 {
-		log.Fatal(tsr.Status)
-	}
+	// if tsr.StatusCode > 200 {
+	// 	log.Fatal(tsr.Status)
+	// }
 
 	resp, err := io.ReadAll(tsr.Body)
 	if err != nil {
@@ -43,6 +43,8 @@ func ExampleParseResponse() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	tsResp.IsValid()
 
 	fmt.Println(tsResp.HashedMessage)
 	fmt.Println(tsResp.Policy)

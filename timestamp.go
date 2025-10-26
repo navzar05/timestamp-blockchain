@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -481,7 +482,7 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 	case Basic:
 		break
 	case HyperledgerFabric:
-		_, err = t.AnchorOnHyperledger(tsaSerialNumber, timestampRes)
+		_, err = t.AnchorOnHyperledger(tsaSerialNumber, tspResponseBytes)
 		break
 	case Ethereum:
 		// to be implemented
@@ -496,7 +497,10 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 	return tspResponseBytes, nil
 }
 
-func (t *Timestamp) AnchorOnHyperledger(tsaSerialNumber *big.Int, timestampRes response) (string, error) {
+func (t *Timestamp) verifyOnHyperledger(serialNumber string) (bool, error) {
+	fmt.Printf("verifyOnHyperledger called with SN: %s\n", serialNumber)
+
+	// Create connection
 	clientConnection := newGrpcConnection()
 	defer clientConnection.Close()
 
@@ -506,25 +510,98 @@ func (t *Timestamp) AnchorOnHyperledger(tsaSerialNumber *big.Int, timestampRes r
 		client.WithHash(hash.SHA256),
 		client.WithClientConnection(clientConnection),
 	)
-
 	if err != nil {
-		return "", err
+		return false, fmt.Errorf("failed to connect: %w", err)
 	}
+	defer gw.Close()
 
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chaincodeName)
 
-	// generate the hex string of the timestamp hash
-	hash := sha256.Sum256(timestampRes.TimeStampToken.Bytes)
-	hashString := hex.EncodeToString(hash[:])
-	_, err = contract.SubmitTransaction("AddDocument", tsaSerialNumber.String(), hashString)
-
+	fmt.Printf("Calling EvaluateTransaction for serial number: %s\n", serialNumber)
+	rsp, err := contract.EvaluateTransaction("VerifyDocument", serialNumber)
 	if err != nil {
-		fmt.Sprintf("error submiting transaction on blockchain %v.", tsaSerialNumber)
+		fmt.Printf("Error evaluating transaction: %v\n", err)
+		return false, fmt.Errorf("failed to verify document: %w", err)
+	}
+
+	fmt.Printf("Response from blockchain: %s\n", string(rsp))
+
+	var document Document
+	if err := json.Unmarshal(rsp, &document); err != nil {
+		fmt.Printf("Error unmarshaling response: %v\n", err)
+		return false, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Verify the hash matches
+	currentHash := sha256.Sum256(t.RawToken)
+	currentHashString := hex.EncodeToString(currentHash[:])
+
+	fmt.Printf("Stored hash from blockchain: %s\n", document.Hash)
+	fmt.Printf("Current timestamp hash: %s\n", currentHashString)
+
+	if document.Hash != currentHashString {
+		return false, fmt.Errorf("hash mismatch: stored=%s, current=%s", document.Hash, currentHashString)
+	}
+
+	return true, nil
+}
+
+func (t *Timestamp) AnchorOnHyperledger(tsaSerialNumber *big.Int, tspResponseBytes []byte) (string, error) {
+	// Create connection
+	clientConnection := newGrpcConnection()
+	defer clientConnection.Close()
+
+	gw, err := client.Connect(
+		newIdentity(),
+		client.WithSign(newSign()),
+		client.WithHash(hash.SHA256),
+		client.WithClientConnection(clientConnection),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect: %w", err)
+	}
+	defer gw.Close()
+
+	network := gw.GetNetwork(channelName)
+	contract := network.GetContract(chaincodeName)
+	if err != nil {
+		return "", err
+	}
+	defer gw.Close()
+
+	hash := sha256.Sum256(tspResponseBytes)
+	hashString := hex.EncodeToString(hash[:])
+
+	tsaSerialNumberString := tsaSerialNumber.String()
+	fmt.Printf("ANCHORING - Serial Number: %s\n", tsaSerialNumberString)
+
+	_, err = contract.SubmitTransaction("AddDocument", tsaSerialNumberString, hashString)
+	if err != nil {
+		fmt.Printf("error submitting transaction on blockchain %v.\n", tsaSerialNumberString)
 		return "", err
 	}
 
 	return hashString, nil
+}
+
+func (t *Timestamp) IsValid() (bool, error) {
+	snBytes := t.SerialNumber.Bytes()
+	if len(snBytes) < 3 {
+		return false, fmt.Errorf("serial number too short")
+	}
+
+	anchoringTypeString := AnchoringType(snBytes[:3])
+
+	switch anchoringTypeString {
+	case HyperledgerFabric:
+		serialNumberDecimal := t.SerialNumber.String()
+		fmt.Printf("Verifying timestamp with SN (decimal): %s\n", serialNumberDecimal)
+		return t.verifyOnHyperledger(serialNumberDecimal)
+		// ... other cases
+	}
+
+	return false, nil
 }
 
 // CreateResponse returns a DER-encoded timestamp response with the specified contents.
