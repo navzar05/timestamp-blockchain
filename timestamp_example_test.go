@@ -44,8 +44,6 @@ func ExampleParseResponse() {
 		log.Fatal(err)
 	}
 
-	tsResp.IsValid()
-
 	fmt.Println(tsResp.HashedMessage)
 	fmt.Println(tsResp.Policy)
 	for _, c := range tsResp.Certificates {
