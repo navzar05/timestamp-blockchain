@@ -484,7 +484,6 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 		_, err = t.AnchorOnHyperledger(tsaSerialNumber, tspResponseBytes)
 		break
 	case Ethereum:
-		// to be implemented
 		break
 
 	}
