@@ -3,6 +3,7 @@
 package timestamp
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
@@ -20,6 +21,10 @@ import (
 	"time"
 
 	"github.com/digitorus/pkcs7"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	goCrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/hash"
 	"github.com/joho/godotenv"
@@ -484,6 +489,36 @@ func (t *Timestamp) CreateResponseWithOpts(signingCert *x509.Certificate, priv c
 		_, err = t.AnchorOnHyperledger(tsaSerialNumber, tspResponseBytes)
 		break
 	case Ethereum:
+
+		// Connect with hardhat ethereum network
+		client, err := ethclient.Dial("hardhat_network")
+		if err != nil {
+			return nil, err
+		}
+		privateKey, _ := goCrypto.HexToECDSA("account_private_key")
+		auth, _ := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(31337))
+		auth.Value = big.NewInt(0)
+		auth.GasLimit = 300000
+		contractAddr := common.HexToAddress("smart_contract_address")
+
+		// Connect with sepholia testnet ethereum network
+
+		/*client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/<API_KEY>")
+		privateKey, _ :=goCrypto.HexToECDSA("digital_wallet_private_key")
+
+		auth, _ := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(11155111))
+		auth.Value = big.NewInt(0)
+		auth.GasLimit = 300000
+		contractAddr := common.HexToAddress("smart_contract_address")
+		*/
+		hashStored, err := AnchorOnEthereum(client, auth, contractAddr, tsaSerialNumber, tspResponseBytes)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("Stored hash: ", hashStored)
+
+		defer client.Close()
+
 		break
 
 	}
@@ -549,6 +584,57 @@ func (t *Timestamp) AnchorOnHyperledger(tsaSerialNumber *big.Int, tspResponseByt
 			fmt.Printf("transaction committed successfully for %v\n", tsaSerialNumberString)
 		}
 	}()
+
+	return hashString, nil
+}
+
+func AnchorOnEthereum(client *ethclient.Client, auth *bind.TransactOpts, contractAddr common.Address, tsaSerialNumber *big.Int, tspResponseBytes []byte) (string, error) {
+	hash := sha256.Sum256(tspResponseBytes)
+	hashString := fmt.Sprintf("%x", hash[:])
+
+	var key [16]byte
+	serialBytes := tsaSerialNumber.Bytes()
+
+	if len(serialBytes) > 16 {
+		copy(key[:], serialBytes[len(serialBytes)-16:])
+	} else {
+		copy(key[16-len(serialBytes):], serialBytes)
+	}
+	registry, err := NewDocumentRegistry(contractAddr, client)
+	if err != nil {
+		return "", err
+	}
+
+	tx, err := registry.AddDocument(auth, key, hash)
+	if err != nil {
+		return "", err
+	}
+
+	// Synchronous method
+	/*
+		_, err = bind.WaitMined(context.Background(), client, tx)
+		if err != nil {
+			return "", err
+		}
+	*/
+
+	fmt.Println("Hash stored on blockchain")
+
+	// Asnchronous method
+	go func(txHash common.Hash) {
+
+		receipt, err := bind.WaitMined(context.Background(), client, tx)
+		if err != nil {
+			fmt.Printf("Error at transaction confirmation %s: %v\n", txHash.Hex(), err)
+			return
+		}
+
+		if receipt.Status == 1 {
+			fmt.Printf("Transaction %s was mined sucessfully in block %d\n", txHash.Hex(), receipt.BlockNumber.Uint64())
+		} else {
+			fmt.Printf("Transaction %s failed (status = 0)\n", txHash.Hex())
+		}
+	}(tx.Hash())
 
 	return hashString, nil
 }
